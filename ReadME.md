@@ -1,4 +1,4 @@
-## How to install Miniconda and create a virtual environment for Python
+## Setting Up Local Environment
 
 1. Download and install Miniconda from the official website: [https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
 2. Open a terminal window and create a new virtual environment:
@@ -28,22 +28,9 @@ conda install pandas jupyter seaborn scikit-learn keras tensorflow
 
 This will install the latest version of each package that is compatible with Python 3.10.
 
-## How to run the main file or Jupyter Notebook
-
-1. You can run the main file or Jupyter Notebook by navigating to the directory where the file is located and running the following command:
+## How to run the main file
 
 ```
-python main.py
+python clothing_classifier_runner.py
+python titanic_classifier_runner.py
 
-```
-
-or
-
-```
-jupyter notebook
-
-```
-
-This will start the Python interpreter and execute the code in the `main.py` file, or start the Jupyter Notebook server and open the Notebook interface in your default web browser.
-
-If you encounter any issues during the installation or setup process, please refer to the official Conda documentation for more information: [https://docs.conda.io/en/latest/](https://docs.conda.io/en/latest/)

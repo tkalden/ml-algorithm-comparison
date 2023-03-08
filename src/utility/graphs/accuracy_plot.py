@@ -10,3 +10,4 @@ def plot(training):
     plt.xlabel('epoch')
     plt.legend(['train', 'validation'], loc='upper left')
     plt.show()
+

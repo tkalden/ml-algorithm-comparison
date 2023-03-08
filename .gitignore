@@ -1,0 +1,11 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+.vscode/
+.ipynb_checkpoints/
+exit/
+src/.DS_Store
+src/models/.DS_Store
+.DS_Store
+

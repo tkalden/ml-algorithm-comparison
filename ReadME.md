@@ -22,7 +22,7 @@ conda activate myenv
 1. Once you have activated your virtual environment, you can use the following command to install the required packages:
 
 ```
-conda install pandas jupyter seaborn scikit-learn keras tensorflow
+conda install pandas jupyter seaborn scikit-learn keras tensorflow pytorch torchvision -c pytorch pyyaml
 
 ```
 

@@ -3,86 +3,65 @@ import sys
 
 import cv2
 import numpy as np
+import open_pose_functions as op
 
-from openpose import pyopenpose as op
-
-sys.path.append(
-    '../../python')
-
-
-# Load the input image and the shirt image
-input_image = cv2.imread(
-    "/Users/tenzinkalden/projects/mlAlgoComparison/src/data/model.jpg")
-shirt_image = cv2.imread(
-    "/Users/tenzinkalden/projects/mlAlgoComparison/src/data/shirt.jpg", cv2.IMREAD_UNCHANGED)
-
-openpose_path = os.path.dirname(os.path.abspath(op.__file__))
-print(f"OpenPose path: {openpose_path}")
-model_folder = os.path.join(openpose_path, "models")
-print(f"Model folder: {model_folder}")
-current_file_path = os.path.abspath(__file__)
-
-# Initialize the OpenPose model parameters
-params = dict()
-params["model_folder"] = "/Users/tenzinkalden/projects/mlAlgoComparison/openpose/models"
-print(current_file_path)
-params["face"] = False
-params["hand"] = False
-
-
-# Start the OpenPose model
-opWrapper = op.WrapperPython()
-opWrapper.configure(params)
-opWrapper.start()
-
-# Create VectorDatum object
-datum_vec = op.VectorDatum()
-
-# Create Datum object
-datum = op.Datum()
-
-# Convert the input image to RGB and pass it to OpenPose for detection
-image_rgb = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
-datum.cvInputData = image_rgb
-
-# Append Datum to VectorDatum
-datum_vec.append(datum)
-
-# Process image
-opWrapper.emplaceAndPop(datum_vec)
-
-# Get pose keypoints
-keypoints = datum.poseKeypoints
+op = op.cloth_model()
 
 # Get the upper body keypoints by selecting the relevant keypoints
-upper_body_keypoints = keypoints[:, 1:9, :]
+person_img_h, person_img_w = op.model.shape[:2]
 
-# Compute the bounding box of the upper body keypoints
-x, y, w, h = cv2.boundingRect(np.int32(upper_body_keypoints.reshape(-1, 2)))
+op.set_upper_body_key_points()
 
-# Resize the shirt image to match the dimensions of the input image
+upper_body_keypoints = op.upper_body_keypoints
+print(upper_body_keypoints)
 
-overlay_image = input_image.copy()
-print(overlay_image.shape)
-if w < overlay_image.shape[1]:
-    shirt_resized = cv2.resize(shirt_image, (w, h))
-else:
-    shirt_resized = cv2.resize(shirt_image, (overlay_image.shape[1], h))
+# Extract the left and right shoulder keypoints
+neck = upper_body_keypoints[0][0]
+left_shoulder = upper_body_keypoints[0][1]
+left_wrist = upper_body_keypoints[0][3]
+right_shoulder = upper_body_keypoints[0][4]
 
-# upper body roi
+shirt_width = int(np.linalg.norm(right_shoulder - left_shoulder))
+shirt_height = int(np.linalg.norm(left_shoulder - left_wrist))
+print(shirt_width, shirt_height)
+shirt = op.crop_image()
+shirt_img_resized = cv2.resize(shirt, (shirt_width, shirt_height))
 
-upper_body_roi = overlay_image[y:y+h, x:x+w]0
-print(upper_body_roi.shape)
+# Rotate shirt image to align with shoulders
+angle = np.arctan2(right_shoulder[1] - left_shoulder[1],
+                   right_shoulder[0] - left_shoulder[0]) * 180 / np.pi
+M = cv2.getRotationMatrix2D((right_shoulder[1], right_shoulder[1]), angle, 1)
+shirt_img_rotated = cv2.warpAffine(
+    shirt_img_resized, M, (shirt_width, shirt_height))
+print(shirt_img_rotated.shape)
 
-# Add the masked shirt image to the masked input image using alpha blending
-alpha = 0.6
-output_masked = cv2.addWeighted(
-    upper_body_roi, 1.0-alpha, shirt_resized, alpha, 0)
-print(output_masked.shape)
+# Create a binary mask of the shirt
+channels = cv2.split(shirt_img_rotated)
+shirt_img_alpha = channels[-1]
+_, shirt_mask = cv2.threshold(shirt_img_alpha, 0, 255, cv2.THRESH_BINARY)
+shirt_mask_inv = cv2.bitwise_not(shirt_mask)
 
-# Replace the shirt region in the overlay image with the alpha blended image
-overlay_image[y:y+h, x:x+w] = output_masked
-# Show the final result
-cv2.imshow("Open-Pose-Method", overlay_image)
+# Crop the shirt image
+shirt_img_cropped = cv2.bitwise_and(
+    shirt_img_rotated, shirt_img_rotated, mask=shirt_mask)
+
+# Use alpha blending to blend the sweater onto the model image
+upper_body_x = int(left_shoulder[0])
+upper_body_y = int(left_shoulder[1])
+alpha = 0.5
+beta = 1 - alpha
+blended = cv2.addWeighted(
+    op.model[upper_body_y:upper_body_y + shirt_height, upper_body_x:upper_body_x + shirt_width], alpha, shirt_img_cropped, beta, 0)
+
+# Replace the ROI in the model image with the blended sweater image
+op.model[upper_body_y:upper_body_y + shirt_height,
+         upper_body_x:upper_body_x + shirt_width] = blended
+
+op.draw_key_points()
+
+# Display the result
+#cv2.imshow('Person with Shirt', shirt_img_resized)
+cv2.imshow('Person with Shirt', op.model)
 cv2.waitKey(0)
+
 cv2.destroyAllWindows()
